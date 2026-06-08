@@ -13,6 +13,10 @@ int main(int argc, char **argv) {
         dr_config_print_usage(argv[0]);
         return 1;
     }
+    if (config.show_help) {
+        dr_config_print_usage(argv[0]);
+        return 0;
+    }
 
     dr_logger_init(config.debug_level);
     return dr_server_run(&config);

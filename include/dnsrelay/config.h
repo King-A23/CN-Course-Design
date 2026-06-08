@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define DR_DEFAULT_UPSTREAM_IP "202.106.0.20"
+#define DR_DEFAULT_UPSTREAM_PORT 53U
 #define DR_DEFAULT_TABLE_FILE "dnsrelay.txt"
 #define DR_DEFAULT_BIND_IP "0.0.0.0"
 #define DR_DEFAULT_CACHE_CAPACITY 128U
@@ -24,7 +25,9 @@ typedef enum DrDebugLevel {
 
 typedef struct DrConfig {
     DrDebugLevel debug_level;
+    int show_help;
     char upstream_ip[DR_MAX_IPV4_TEXT_LEN];
+    uint16_t upstream_port;
     char table_path[DR_MAX_PATH_LEN];
     char bind_ip[DR_MAX_IPV4_TEXT_LEN];
     uint16_t bind_port;

@@ -24,6 +24,33 @@ static const uint8_t k_query[] = {
     0x00, 0x01
 };
 
+static const uint8_t k_root_query[] = {
+    0x33, 0x33,
+    0x01, 0x00,
+    0x00, 0x01,
+    0x00, 0x00,
+    0x00, 0x00,
+    0x00, 0x00,
+    0x00,
+    0x00, 0x01,
+    0x00, 0x01
+};
+
+static const uint8_t k_compressed_query[] = {
+    0xab, 0xcd,
+    0x01, 0x00,
+    0x00, 0x01,
+    0x00, 0x00,
+    0x00, 0x00,
+    0x00, 0x00,
+    0xc0, 0x12,
+    0x00, 0x01,
+    0x00, 0x01,
+    0x03, 'W', 'w', 'W',
+    0x07, 'E', 'x', 'a', 'm', 'p', 'l', 'e',
+    0x00
+};
+
 static void write_u16(uint8_t *bytes, uint16_t value) {
     bytes[0] = (uint8_t)((value >> 8) & 0xffU);
     bytes[1] = (uint8_t)(value & 0xffU);
@@ -77,25 +104,24 @@ static int test_parse_normal_query(void) {
     return 0;
 }
 
-static int test_parse_compressed_query(void) {
-    static const uint8_t compressed_query[] = {
-        0xab, 0xcd,
-        0x01, 0x00,
-        0x00, 0x01,
-        0x00, 0x00,
-        0x00, 0x00,
-        0x00, 0x00,
-        0xc0, 0x12,
-        0x00, 0x01,
-        0x00, 0x01,
-        0x03, 'W', 'w', 'W',
-        0x07, 'E', 'x', 'a', 'm', 'p', 'l', 'e',
-        0x00
-    };
+static int test_parse_root_query(void) {
     DrParsedQuery parsed;
     char errbuf[128];
 
-    CHECK(dr_dns_parse_query(compressed_query, sizeof(compressed_query), &parsed, errbuf, sizeof(errbuf)));
+    CHECK(dr_dns_parse_query(k_root_query, sizeof(k_root_query), &parsed, errbuf, sizeof(errbuf)));
+    CHECK(parsed.id == 0x3333U);
+    CHECK(strcmp(parsed.qname, ".") == 0);
+    CHECK(parsed.qtype == 1U);
+    CHECK(parsed.qclass == 1U);
+    CHECK(parsed.question_end_offset == sizeof(k_root_query));
+    return 0;
+}
+
+static int test_parse_compressed_query(void) {
+    DrParsedQuery parsed;
+    char errbuf[128];
+
+    CHECK(dr_dns_parse_query(k_compressed_query, sizeof(k_compressed_query), &parsed, errbuf, sizeof(errbuf)));
     CHECK(strcmp(parsed.qname, "www.example") == 0);
     CHECK(parsed.question_end_offset == 18U);
     return 0;
@@ -178,6 +204,33 @@ static int test_build_responses_and_ttl_patches(void) {
     return 0;
 }
 
+static int test_compressed_query_responses_are_canonicalized(void) {
+    DrParsedQuery parsed;
+    uint8_t response[DR_DNS_MAX_PACKET_SIZE];
+    size_t response_len = 0U;
+    uint32_t ip_be = 0U;
+    char errbuf[128];
+
+    CHECK(dr_dns_parse_query(k_compressed_query, sizeof(k_compressed_query), &parsed, errbuf, sizeof(errbuf)));
+    CHECK(dr_parse_ipv4("11.22.33.44", &ip_be));
+    CHECK(dr_dns_build_a_response(k_compressed_query, sizeof(k_compressed_query), &parsed, ip_be, 60U, response, &response_len));
+    CHECK(response_len == 45U);
+    CHECK(response[12] == 3U);
+    CHECK(memcmp(response + 13U, "www", 3U) == 0);
+    CHECK(response[16] == 7U);
+    CHECK(memcmp(response + 17U, "example", 7U) == 0);
+    CHECK(response[24] == 0U);
+    CHECK(read_u16(response + 29U) == 0xc00cU);
+
+    CHECK(dr_dns_build_error_response(k_compressed_query, sizeof(k_compressed_query), DR_DNS_RCODE_NXDOMAIN, response, &response_len));
+    CHECK(response_len == 29U);
+    CHECK(response[12] == 3U);
+    CHECK(memcmp(response + 13U, "www", 3U) == 0);
+    CHECK(response[24] == 0U);
+    CHECK(dr_dns_get_rcode(response, response_len) == DR_DNS_RCODE_NXDOMAIN);
+    return 0;
+}
+
 static int test_collect_ttls_skips_edns_opt(void) {
     DrParsedQuery parsed;
     DrTtlPatchList patches;
@@ -215,9 +268,11 @@ static int test_collect_ttls_skips_edns_opt(void) {
 
 int main(void) {
     CHECK(test_parse_normal_query() == 0);
+    CHECK(test_parse_root_query() == 0);
     CHECK(test_parse_compressed_query() == 0);
     CHECK(test_parse_rejects_malformed_queries() == 0);
     CHECK(test_build_responses_and_ttl_patches() == 0);
+    CHECK(test_compressed_query_responses_are_canonicalized() == 0);
     CHECK(test_collect_ttls_skips_edns_opt() == 0);
     return 0;
 }

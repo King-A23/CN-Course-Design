@@ -33,6 +33,65 @@ static void write_u32(uint8_t *bytes, uint32_t value) {
     bytes[3] = (uint8_t)(value & 0xffU);
 }
 
+static int write_name(const char *name, uint8_t *out, size_t out_size, size_t *written) {
+    const char *label_start = name;
+    size_t total = 0U;
+
+    if (name == NULL || out == NULL || written == NULL || out_size == 0U) {
+        return 0;
+    }
+
+    if (strcmp(name, ".") == 0) {
+        out[0] = 0U;
+        *written = 1U;
+        return 1;
+    }
+
+    while (*label_start != '\0') {
+        const char *label_end = strchr(label_start, '.');
+        size_t label_len = label_end == NULL ? strlen(label_start) : (size_t)(label_end - label_start);
+
+        if (label_len == 0U || label_len > 63U || total + 1U + label_len + 1U > out_size) {
+            return 0;
+        }
+
+        out[total++] = (uint8_t)label_len;
+        memcpy(out + total, label_start, label_len);
+        total += label_len;
+
+        if (label_end == NULL) {
+            break;
+        }
+        label_start = label_end + 1U;
+    }
+
+    if (total + 1U > out_size || total > DR_DNS_MAX_DOMAIN_LEN) {
+        return 0;
+    }
+    out[total++] = 0U;
+    *written = total;
+    return 1;
+}
+
+static int copy_parsed_question(const DrParsedQuery *parsed, uint8_t *out, size_t *question_end) {
+    size_t qname_len = 0U;
+
+    if (parsed == NULL || out == NULL || question_end == NULL) {
+        return 0;
+    }
+    if (!write_name(parsed->qname, out + DR_DNS_HEADER_SIZE, DR_DNS_MAX_PACKET_SIZE - DR_DNS_HEADER_SIZE, &qname_len)) {
+        return 0;
+    }
+    if (DR_DNS_HEADER_SIZE + qname_len + 4U > DR_DNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+
+    write_u16(out + DR_DNS_HEADER_SIZE + qname_len, parsed->qtype);
+    write_u16(out + DR_DNS_HEADER_SIZE + qname_len + 2U, parsed->qclass);
+    *question_end = DR_DNS_HEADER_SIZE + qname_len + 4U;
+    return 1;
+}
+
 static int skip_name(const uint8_t *packet, size_t packet_len, size_t offset, size_t *consumed) {
     size_t pos = offset;
 
@@ -108,8 +167,16 @@ static int read_name(
             if (!jumped) {
                 *consumed = pos - offset + 1U;
             }
-            output[written] = '\0';
-            return written > 0U;
+            if (written == 0U) {
+                if (output_size < 2U) {
+                    return 0;
+                }
+                output[0] = '.';
+                output[1] = '\0';
+            } else {
+                output[written] = '\0';
+            }
+            return 1;
         }
 
         if ((label_len & 0xc0U) != 0U || label_len > 63U || pos + 1U + label_len > packet_len) {
@@ -313,7 +380,9 @@ int dr_dns_build_a_response(
         return 0;
     }
 
-    memcpy(out, query, parsed->question_end_offset);
+    if (!copy_parsed_question(parsed, out, &answer_offset) || answer_offset + 16U > DR_DNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
     flags = (uint16_t)(0x8000U | (parsed->flags & 0x0100U) | 0x0080U);
     write_u16(out, parsed->id);
     write_u16(out + 2U, flags);
@@ -322,7 +391,6 @@ int dr_dns_build_a_response(
     write_u16(out + 8U, 0U);
     write_u16(out + 10U, 0U);
 
-    answer_offset = parsed->question_end_offset;
     write_u16(out + answer_offset, 0xc00cU);
     write_u16(out + answer_offset + 2U, 1U);
     write_u16(out + answer_offset + 4U, 1U);
@@ -341,6 +409,7 @@ int dr_dns_build_error_response(
     size_t *out_len
 ) {
     DrDnsHeader header;
+    DrParsedQuery parsed;
     uint16_t flags = 0U;
     size_t question_end = DR_DNS_HEADER_SIZE;
     uint16_t qdcount = 0U;
@@ -354,8 +423,14 @@ int dr_dns_build_error_response(
     if (!dr_dns_parse_header(query, query_len, &header)) {
         return 0;
     }
-    if (!copy_question(query, query_len, out, &question_end)) {
-        return 0;
+    if (header.qdcount == 1U && dr_dns_parse_query(query, query_len, &parsed, NULL, 0U)) {
+        if (!copy_parsed_question(&parsed, out, &question_end)) {
+            return 0;
+        }
+    } else {
+        if (!copy_question(query, query_len, out, &question_end)) {
+            return 0;
+        }
     }
     if (question_end > DR_DNS_HEADER_SIZE) {
         qdcount = 1U;

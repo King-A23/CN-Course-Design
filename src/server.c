@@ -63,7 +63,7 @@ static int init_upstream_addr(DrServer *server) {
 
     memset(&server->upstream_addr, 0, sizeof(server->upstream_addr));
     server->upstream_addr.sin_family = AF_INET;
-    server->upstream_addr.sin_port = htons(53);
+    server->upstream_addr.sin_port = htons(server->config.upstream_port);
 
     if (!dr_parse_ipv4(server->config.upstream_ip, &upstream_ip_be)) {
         dr_log_error("invalid upstream IPv4 address: %s", server->config.upstream_ip);
@@ -164,20 +164,20 @@ static int handle_client_packet(
 
     log_query_basic(client_addr, client_addr_len, &parsed);
 
-    if (parsed.qtype == 1U && parsed.qclass == 1U) {
+    if (parsed.qclass == 1U) {
         local = dr_local_table_lookup(&server->local_table, parsed.qname);
-        if (local.kind == DR_LOCAL_HIT) {
-            if (!dr_dns_build_a_response(packet, packet_len, &parsed, local.ipv4_be, local.ttl, response, &response_len)) {
-                return 0;
-            }
-            dr_log_verbose("local hit for %s", parsed.qname);
-            return send_packet(server->sock, response, response_len, client_addr, client_addr_len);
-        }
         if (local.kind == DR_LOCAL_BLOCKED) {
             if (!dr_dns_build_error_response(packet, packet_len, DR_DNS_RCODE_NXDOMAIN, response, &response_len)) {
                 return 0;
             }
             dr_log_verbose("blocked domain %s", parsed.qname);
+            return send_packet(server->sock, response, response_len, client_addr, client_addr_len);
+        }
+        if (parsed.qtype == 1U && local.kind == DR_LOCAL_HIT) {
+            if (!dr_dns_build_a_response(packet, packet_len, &parsed, local.ipv4_be, local.ttl, response, &response_len)) {
+                return 0;
+            }
+            dr_log_verbose("local hit for %s", parsed.qname);
             return send_packet(server->sock, response, response_len, client_addr, client_addr_len);
         }
     }
@@ -223,13 +223,40 @@ static int handle_client_packet(
 
 static int handle_upstream_packet(DrServer *server, uint8_t *packet, size_t packet_len, uint64_t now_ms) {
     uint16_t upstream_id = dr_dns_read_id(packet, packet_len);
+    DrPendingRequest *pending = NULL;
     DrPendingRequest request;
+    DrParsedQuery response_query;
+    char errbuf[128];
 
-    if (!dr_pending_map_remove(&server->pending_map, upstream_id, &request)) {
+    pending = dr_pending_map_get(&server->pending_map, upstream_id);
+    if (pending == NULL) {
         dr_log_verbose("drop late or unknown upstream response id=%u", upstream_id);
         return 1;
     }
 
+    if (!dr_dns_parse_query(packet, packet_len, &response_query, errbuf, sizeof(errbuf))) {
+        dr_log_verbose("drop upstream response id=%u because question parse failed: %s", upstream_id, errbuf);
+        return 1;
+    }
+    if (strcmp(response_query.qname, pending->qname) != 0 ||
+        response_query.qtype != pending->qtype ||
+        response_query.qclass != pending->qclass) {
+        dr_log_verbose(
+            "drop upstream response id=%u because question mismatch: got %s/%u/%u expected %s/%u/%u",
+            upstream_id,
+            response_query.qname,
+            response_query.qtype,
+            response_query.qclass,
+            pending->qname,
+            pending->qtype,
+            pending->qclass
+        );
+        return 1;
+    }
+
+    if (!dr_pending_map_remove(&server->pending_map, upstream_id, &request)) {
+        return 1;
+    }
     maybe_cache_response(server, &request, packet, packet_len, now_ms);
     dr_dns_write_id(packet, packet_len, request.client_id);
     dr_log_verbose("reply upstream response for %s to client id=%u", request.qname, request.client_id);
@@ -279,10 +306,11 @@ int dr_server_run(const DrConfig *config) {
     }
 
     dr_log_basic(
-        "dnsrelay started bind=%s:%u upstream=%s table=%s entries=%u cache=%u",
+        "dnsrelay started bind=%s:%u upstream=%s:%u table=%s entries=%u cache=%u",
         server.config.bind_ip,
         (unsigned)server.config.bind_port,
         server.config.upstream_ip,
+        (unsigned)server.config.upstream_port,
         server.config.table_path,
         (unsigned)dr_local_table_size(&server.local_table),
         (unsigned)server.config.cache_capacity
