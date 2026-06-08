@@ -50,6 +50,9 @@ if(DNSRELAY_BUILD_TESTS)
     add_executable(test_pending_map tests/test_pending_map.c)
     target_link_libraries(test_pending_map PRIVATE dnsrelay_core)
 
+    add_executable(test_cache tests/test_cache.c)
+    target_link_libraries(test_cache PRIVATE dnsrelay_core)
+
     add_test(NAME test_local_table COMMAND test_local_table)
     set_tests_properties(test_local_table PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
@@ -58,4 +61,7 @@ if(DNSRELAY_BUILD_TESTS)
 
     add_test(NAME test_pending_map COMMAND test_pending_map)
     set_tests_properties(test_pending_map PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_test(NAME test_cache COMMAND test_cache)
+    set_tests_properties(test_cache PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()

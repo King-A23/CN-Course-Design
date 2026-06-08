@@ -36,10 +36,19 @@ static void write_u32(uint8_t *bytes, uint32_t value) {
 static int skip_name(const uint8_t *packet, size_t packet_len, size_t offset, size_t *consumed) {
     size_t pos = offset;
 
+    if (packet == NULL || consumed == NULL || offset >= packet_len) {
+        return 0;
+    }
+
     while (pos < packet_len) {
         uint8_t label_len = packet[pos];
         if ((label_len & 0xc0U) == 0xc0U) {
+            uint16_t pointer;
             if (pos + 1U >= packet_len) {
+                return 0;
+            }
+            pointer = (uint16_t)(((uint16_t)(label_len & 0x3fU) << 8) | packet[pos + 1U]);
+            if (pointer >= packet_len) {
                 return 0;
             }
             *consumed = pos - offset + 2U;
@@ -71,7 +80,7 @@ static int read_name(
     size_t jumps = 0U;
     int jumped = 0;
 
-    if (output_size == 0U) {
+    if (packet == NULL || output == NULL || consumed == NULL || output_size == 0U || offset >= packet_len) {
         return 0;
     }
 
@@ -130,7 +139,7 @@ static int copy_question(const uint8_t *query, size_t query_len, uint8_t *out, s
     DrDnsHeader header;
     size_t qname_consumed = 0U;
 
-    if (!dr_dns_parse_header(query, query_len, &header)) {
+    if (out == NULL || question_end == NULL || !dr_dns_parse_header(query, query_len, &header)) {
         return 0;
     }
 
@@ -139,6 +148,9 @@ static int copy_question(const uint8_t *query, size_t query_len, uint8_t *out, s
         if (DR_DNS_HEADER_SIZE + qname_consumed + 4U <= query_len) {
             *question_end = DR_DNS_HEADER_SIZE + qname_consumed + 4U;
         }
+    }
+    if (*question_end > DR_DNS_MAX_PACKET_SIZE) {
+        return 0;
     }
 
     memcpy(out, query, *question_end);
@@ -163,6 +175,7 @@ int dr_dns_normalize_name(const char *input, char *output, size_t output_size) {
     size_t len;
     size_t index;
     size_t out_len;
+    size_t label_len;
 
     if (input == NULL || output == NULL || output_size == 0U) {
         return 0;
@@ -177,34 +190,50 @@ int dr_dns_normalize_name(const char *input, char *output, size_t output_size) {
     }
 
     out_len = 0U;
+    label_len = 0U;
     for (index = 0; index < len; ++index) {
         unsigned char ch = (unsigned char)input[index];
+        if (ch == '.') {
+            if (label_len == 0U) {
+                return 0;
+            }
+            output[out_len++] = '.';
+            label_len = 0U;
+            continue;
+        }
+        label_len += 1U;
+        if (label_len > 63U) {
+            return 0;
+        }
         output[out_len++] = (char)ascii_lower(ch);
+    }
+    if (label_len == 0U) {
+        return 0;
     }
     output[out_len] = '\0';
     return 1;
 }
 
 uint16_t dr_dns_read_id(const uint8_t *packet, size_t packet_len) {
-    return packet_len >= 2U ? read_u16(packet) : 0U;
+    return packet != NULL && packet_len >= 2U ? read_u16(packet) : 0U;
 }
 
 void dr_dns_write_id(uint8_t *packet, size_t packet_len, uint16_t id) {
-    if (packet_len >= 2U) {
+    if (packet != NULL && packet_len >= 2U) {
         write_u16(packet, id);
     }
 }
 
 int dr_dns_is_response(const uint8_t *packet, size_t packet_len) {
-    return packet_len >= DR_DNS_HEADER_SIZE && (read_u16(packet + 2) & 0x8000U) != 0U;
+    return packet != NULL && packet_len >= DR_DNS_HEADER_SIZE && (read_u16(packet + 2) & 0x8000U) != 0U;
 }
 
 uint8_t dr_dns_get_opcode(const uint8_t *packet, size_t packet_len) {
-    return packet_len >= DR_DNS_HEADER_SIZE ? (uint8_t)((read_u16(packet + 2) >> 11) & 0x0fU) : 0xffU;
+    return packet != NULL && packet_len >= DR_DNS_HEADER_SIZE ? (uint8_t)((read_u16(packet + 2) >> 11) & 0x0fU) : 0xffU;
 }
 
 uint8_t dr_dns_get_rcode(const uint8_t *packet, size_t packet_len) {
-    return packet_len >= DR_DNS_HEADER_SIZE ? (uint8_t)(read_u16(packet + 2) & 0x0fU) : 0xffU;
+    return packet != NULL && packet_len >= DR_DNS_HEADER_SIZE ? (uint8_t)(read_u16(packet + 2) & 0x0fU) : 0xffU;
 }
 
 int dr_dns_parse_query(const uint8_t *packet, size_t packet_len, DrParsedQuery *parsed, char *errbuf, size_t errbuf_size) {
@@ -216,6 +245,12 @@ int dr_dns_parse_query(const uint8_t *packet, size_t packet_len, DrParsedQuery *
         errbuf[0] = '\0';
     }
 
+    if (parsed == NULL) {
+        if (errbuf != NULL && errbuf_size > 0U) {
+            snprintf(errbuf, errbuf_size, "output query is null");
+        }
+        return 0;
+    }
     memset(parsed, 0, sizeof(*parsed));
     if (!dr_dns_parse_header(packet, packet_len, &header)) {
         if (errbuf != NULL && errbuf_size > 0U) {
@@ -269,8 +304,12 @@ int dr_dns_build_a_response(
     uint16_t flags;
     size_t answer_offset;
 
-    (void)query_len;
-    if (parsed->question_end_offset + 16U > DR_DNS_MAX_PACKET_SIZE) {
+    if (out_len != NULL) {
+        *out_len = 0U;
+    }
+    if (query == NULL || parsed == NULL || out == NULL || out_len == NULL ||
+        parsed->question_end_offset > query_len ||
+        parsed->question_end_offset + 16U > DR_DNS_MAX_PACKET_SIZE) {
         return 0;
     }
 
@@ -306,6 +345,12 @@ int dr_dns_build_error_response(
     size_t question_end = DR_DNS_HEADER_SIZE;
     uint16_t qdcount = 0U;
 
+    if (out_len != NULL) {
+        *out_len = 0U;
+    }
+    if (query == NULL || out == NULL || out_len == NULL) {
+        return 0;
+    }
     if (!dr_dns_parse_header(query, query_len, &header)) {
         return 0;
     }
@@ -334,7 +379,10 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
     uint32_t rr_index;
     uint32_t current_min = 0xffffffffU;
 
-    if (!dr_dns_parse_header(packet, packet_len, &header)) {
+    if (min_ttl != NULL) {
+        *min_ttl = 0U;
+    }
+    if (patches == NULL || !dr_dns_parse_header(packet, packet_len, &header)) {
         return 0;
     }
 
@@ -352,6 +400,7 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
         size_t consumed = 0U;
         uint32_t ttl = 0U;
         uint16_t rdlength = 0U;
+        uint16_t rr_type = 0U;
         size_t ttl_offset = 0U;
 
         if (!skip_name(packet, packet_len, offset, &consumed)) {
@@ -361,20 +410,23 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
             return 0;
         }
 
+        rr_type = read_u16(packet + offset + consumed);
         ttl_offset = offset + consumed + 4U;
         ttl = read_u32(packet + ttl_offset);
         rdlength = read_u16(packet + ttl_offset + 4U);
 
-        if (patches->count < DR_DNS_MAX_TTL_PATCHES) {
-            patches->items[patches->count].ttl_offset = ttl_offset;
-            patches->items[patches->count].original_ttl = ttl;
-            patches->count += 1U;
-        } else {
-            return 0;
-        }
+        if (rr_type != 41U) {
+            if (patches->count < DR_DNS_MAX_TTL_PATCHES) {
+                patches->items[patches->count].ttl_offset = ttl_offset;
+                patches->items[patches->count].original_ttl = ttl;
+                patches->count += 1U;
+            } else {
+                return 0;
+            }
 
-        if (ttl < current_min) {
-            current_min = ttl;
+            if (ttl < current_min) {
+                current_min = ttl;
+            }
         }
         offset += consumed + 10U + rdlength;
         if (offset > packet_len) {
@@ -390,6 +442,9 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
 
 void dr_dns_apply_ttl_patches(uint8_t *packet, size_t packet_len, const DrTtlPatchList *patches, uint32_t elapsed_sec) {
     size_t index;
+    if (packet == NULL || patches == NULL) {
+        return;
+    }
     for (index = 0; index < patches->count; ++index) {
         uint32_t ttl = patches->items[index].original_ttl;
         if (patches->items[index].ttl_offset + 4U > packet_len) {

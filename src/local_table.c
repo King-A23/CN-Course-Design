@@ -39,6 +39,18 @@ static void clear_entries(DrLocalEntry *entries, size_t capacity) {
     }
 }
 
+static void place_existing_entry(DrLocalEntry *entries, size_t capacity, char *domain, uint32_t ipv4_be) {
+    size_t mask = capacity - 1U;
+    size_t slot = (size_t)(hash_name(domain) & (uint32_t)mask);
+
+    while (entries[slot].in_use) {
+        slot = (slot + 1U) & mask;
+    }
+    entries[slot].domain = domain;
+    entries[slot].ipv4_be = ipv4_be;
+    entries[slot].in_use = 1;
+}
+
 static int ensure_table_ready(DrLocalTable *table) {
     if (table->entries != NULL) {
         return 1;
@@ -54,9 +66,34 @@ static int ensure_table_ready(DrLocalTable *table) {
     return 1;
 }
 
+static int expand_table(DrLocalTable *table) {
+    DrLocalEntry *new_entries = NULL;
+    size_t new_capacity;
+    size_t index;
+
+    new_capacity = table->capacity * 2U;
+    new_entries = (DrLocalEntry *)malloc(sizeof(DrLocalEntry) * new_capacity);
+    if (new_entries == NULL) {
+        return 0;
+    }
+    clear_entries(new_entries, new_capacity);
+
+    for (index = 0; index < table->capacity; ++index) {
+        if (table->entries[index].in_use) {
+            place_existing_entry(new_entries, new_capacity, table->entries[index].domain, table->entries[index].ipv4_be);
+        }
+    }
+
+    free(table->entries);
+    table->entries = new_entries;
+    table->capacity = new_capacity;
+    return 1;
+}
+
 static int insert_entry(DrLocalTable *table, const char *domain, uint32_t ipv4_be) {
     size_t mask;
     size_t slot;
+    size_t scanned = 0U;
 
     if (!ensure_table_ready(table)) {
         return 0;
@@ -71,6 +108,21 @@ static int insert_entry(DrLocalTable *table, const char *domain, uint32_t ipv4_b
             return 1;
         }
         slot = (slot + 1U) & mask;
+        scanned += 1U;
+        if (scanned >= table->capacity) {
+            return 0;
+        }
+    }
+
+    if ((table->size + 1U) * 10U > table->capacity * 7U) {
+        if (!expand_table(table)) {
+            return 0;
+        }
+        mask = table->capacity - 1U;
+        slot = (size_t)(hash_name(domain) & (uint32_t)mask);
+        while (table->entries[slot].in_use) {
+            slot = (slot + 1U) & mask;
+        }
     }
 
     table->entries[slot].domain = dup_text(domain);
@@ -86,6 +138,13 @@ static int insert_entry(DrLocalTable *table, const char *domain, uint32_t ipv4_b
 int dr_local_table_load(DrLocalTable *table, const char *path, char *errbuf, size_t errbuf_size) {
     FILE *file = NULL;
     char line[1024];
+
+    if (table == NULL || path == NULL) {
+        if (errbuf != NULL && errbuf_size > 0) {
+            snprintf(errbuf, errbuf_size, "invalid local table arguments");
+        }
+        return 0;
+    }
 
     memset(table, 0, sizeof(*table));
 
@@ -154,6 +213,7 @@ DrLocalLookupResult dr_local_table_lookup(const DrLocalTable *table, const char 
     char normalized[DR_DNS_MAX_DOMAIN_LEN + 1];
     size_t mask;
     size_t slot;
+    size_t scanned = 0U;
 
     result.kind = DR_LOCAL_MISS;
     result.ipv4_be = 0;
@@ -176,6 +236,10 @@ DrLocalLookupResult dr_local_table_lookup(const DrLocalTable *table, const char 
             return result;
         }
         slot = (slot + 1U) & mask;
+        scanned += 1U;
+        if (scanned >= table->capacity) {
+            return result;
+        }
     }
 
     return result;

@@ -44,7 +44,8 @@ int dr_pending_map_insert(
     uint32_t attempts;
     uint16_t candidate;
 
-    if (map == NULL || map->slots == NULL) {
+    if (map == NULL || map->slots == NULL || client_addr == NULL || qname == NULL ||
+        client_addr_len == 0 || (size_t)client_addr_len > sizeof(struct sockaddr_storage)) {
         return 0;
     }
 
