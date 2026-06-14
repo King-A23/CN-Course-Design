@@ -17,33 +17,33 @@
 #define DR_DNS_RCODE_REFUSED 5
 
 typedef struct DrDnsHeader {
-    uint16_t id;
-    uint16_t flags;
-    uint16_t qdcount;
-    uint16_t ancount;
-    uint16_t nscount;
-    uint16_t arcount;
+    uint16_t id; // DNS 事务 ID
+    uint16_t flags; // DNS 头部标志位
+    uint16_t qdcount; // 问题记录数量
+    uint16_t ancount; // 回答记录数量
+    uint16_t nscount; // 权威记录数量
+    uint16_t arcount; // 附加记录数量
 } DrDnsHeader;
 
 typedef struct DrParsedQuery {
-    uint16_t id;
-    uint16_t flags;
-    uint16_t qtype;
-    uint16_t qclass;
-    uint8_t opcode;
-    uint8_t qr;
-    char qname[DR_DNS_MAX_DOMAIN_LEN + 1];
-    size_t question_end_offset;
+    uint16_t id; // 查询报文事务 ID
+    uint16_t flags; // 查询报文头部标志位
+    uint16_t qtype; // 查询类型
+    uint16_t qclass; // 查询类别
+    uint8_t opcode; // DNS 操作码
+    uint8_t qr; // 查询或响应标记
+    char qname[DR_DNS_MAX_DOMAIN_LEN + 1]; // 规范化后的查询域名
+    size_t question_end_offset; // 问题段结束位置偏移
 } DrParsedQuery;
 
 typedef struct DrTtlPatch {
-    size_t ttl_offset;
-    uint32_t original_ttl;
+    size_t ttl_offset; // TTL 字段在报文中的偏移
+    uint32_t original_ttl; // 响应报文中的原始 TTL 值
 } DrTtlPatch;
 
 typedef struct DrTtlPatchList {
-    DrTtlPatch items[DR_DNS_MAX_TTL_PATCHES];
-    size_t count;
+    DrTtlPatch items[DR_DNS_MAX_TTL_PATCHES]; // 需要修正的 TTL 字段数组
+    size_t count; // 已记录的 TTL 字段数量
 } DrTtlPatchList;
 
 int dr_dns_parse_header(const uint8_t *packet, size_t packet_len, DrDnsHeader *header);

@@ -11,13 +11,13 @@
 #include <string.h>
 
 typedef struct DrServer {
-    DrConfig config;
-    dr_socket_t sock;
-    struct sockaddr_in bind_addr;
-    struct sockaddr_in upstream_addr;
-    DrLocalTable local_table;
-    DrPendingMap pending_map;
-    DrCache cache;
+    DrConfig config; // 服务运行配置
+    dr_socket_t sock; // 服务端 UDP socket
+    struct sockaddr_in bind_addr; // 本地监听地址
+    struct sockaddr_in upstream_addr; // 上游 DNS 服务器地址
+    DrLocalTable local_table; // 本地域名规则表
+    DrPendingMap pending_map; // 等待上游响应的请求映射
+    DrCache cache; // DNS 响应缓存
 } DrServer;
 
 static int send_packet(dr_socket_t sock, const uint8_t *packet, size_t packet_len, const struct sockaddr *addr, socklen_t addr_len) {

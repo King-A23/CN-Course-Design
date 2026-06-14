@@ -6,23 +6,23 @@
 #include <stdint.h>
 
 typedef struct DrPendingRequest {
-    int active;
-    uint16_t upstream_id;
-    uint16_t client_id;
-    struct sockaddr_storage client_addr;
-    socklen_t client_addr_len;
-    uint8_t query_packet[DR_DNS_MAX_PACKET_SIZE];
-    size_t query_len;
-    uint64_t started_ms;
-    char qname[DR_DNS_MAX_DOMAIN_LEN + 1];
-    uint16_t qtype;
-    uint16_t qclass;
+    int active; // 请求槽位是否正在等待上游响应
+    uint16_t upstream_id; // 转发给上游 DNS 时使用的新事务 ID
+    uint16_t client_id; // 客户端原始查询事务 ID
+    struct sockaddr_storage client_addr; // 客户端地址
+    socklen_t client_addr_len; // 客户端地址长度
+    uint8_t query_packet[DR_DNS_MAX_PACKET_SIZE]; // 客户端原始查询报文副本
+    size_t query_len; // 客户端原始查询报文长度
+    uint64_t started_ms; // 请求转发给上游的毫秒时间
+    char qname[DR_DNS_MAX_DOMAIN_LEN + 1]; // 查询域名
+    uint16_t qtype; // 查询类型
+    uint16_t qclass; // 查询类别
 } DrPendingRequest;
 
 typedef struct DrPendingMap {
-    DrPendingRequest *slots;
-    uint16_t next_id;
-    size_t active_count;
+    DrPendingRequest *slots; // 按上游事务 ID 索引的请求槽位数组
+    uint16_t next_id; // 下一次尝试分配的上游事务 ID
+    size_t active_count; // 当前等待上游响应的请求数量
 } DrPendingMap;
 
 int dr_pending_map_init(DrPendingMap *map);

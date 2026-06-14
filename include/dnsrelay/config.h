@@ -18,21 +18,21 @@
 #endif
 
 typedef enum DrDebugLevel {
-    DR_LOG_NONE = 0,
-    DR_LOG_BASIC = 1,
-    DR_LOG_VERBOSE = 2
+    DR_LOG_NONE = 0, // 不输出调试日志
+    DR_LOG_BASIC = 1, // 输出基础调试日志
+    DR_LOG_VERBOSE = 2 // 输出详细调试日志
 } DrDebugLevel;
 
 typedef struct DrConfig {
-    DrDebugLevel debug_level;
-    int show_help;
-    char upstream_ip[DR_MAX_IPV4_TEXT_LEN];
-    uint16_t upstream_port;
-    char table_path[DR_MAX_PATH_LEN];
-    char bind_ip[DR_MAX_IPV4_TEXT_LEN];
-    uint16_t bind_port;
-    size_t cache_capacity;
-    uint32_t upstream_timeout_ms;
+    DrDebugLevel debug_level; // 调试日志输出等级
+    int show_help; // 是否只显示帮助信息
+    char upstream_ip[DR_MAX_IPV4_TEXT_LEN]; // 上游 DNS 服务器 IPv4 地址
+    uint16_t upstream_port; // 上游 DNS 服务器端口
+    char table_path[DR_MAX_PATH_LEN]; // 本地域名表文件路径
+    char bind_ip[DR_MAX_IPV4_TEXT_LEN]; // 本机监听 IPv4 地址
+    uint16_t bind_port; // 本机监听端口
+    size_t cache_capacity; // DNS 响应缓存容量
+    uint32_t upstream_timeout_ms; // 等待上游响应的超时时间
 } DrConfig;
 
 void dr_config_set_defaults(DrConfig *config);

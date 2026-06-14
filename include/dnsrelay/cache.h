@@ -6,23 +6,23 @@
 #include <stdint.h>
 
 typedef struct DrCacheEntry {
-    int in_use;
-    char qname[DR_DNS_MAX_DOMAIN_LEN + 1];
-    uint16_t qtype;
-    uint16_t qclass;
-    uint8_t packet[DR_DNS_MAX_PACKET_SIZE];
-    size_t packet_len;
-    DrTtlPatchList ttl_patches;
-    uint64_t stored_at_ms;
-    uint64_t expire_at_ms;
-    uint64_t last_used_tick;
+    int in_use; // 槽位是否已被缓存项占用
+    char qname[DR_DNS_MAX_DOMAIN_LEN + 1]; // 查询域名
+    uint16_t qtype; // 查询类型
+    uint16_t qclass; // 查询类别
+    uint8_t packet[DR_DNS_MAX_PACKET_SIZE]; // 缓存的 DNS 响应报文副本
+    size_t packet_len; // 缓存响应报文长度
+    DrTtlPatchList ttl_patches; // 响应中需要按时间修正的 TTL 字段列表
+    uint64_t stored_at_ms; // 写入缓存的毫秒时间
+    uint64_t expire_at_ms; // 缓存项过期的毫秒时间
+    uint64_t last_used_tick; // 最近一次命中的 LRU 访问序号
 } DrCacheEntry;
 
 typedef struct DrCache {
-    DrCacheEntry *entries;
-    size_t capacity;
-    size_t size;
-    uint64_t tick;
+    DrCacheEntry *entries; // 缓存项数组
+    size_t capacity; // 缓存最大容量
+    size_t size; // 当前有效缓存项数量
+    uint64_t tick; // LRU 访问序号计数器
 } DrCache;
 
 int dr_cache_init(DrCache *cache, size_t capacity);
