@@ -193,6 +193,12 @@ static int test_build_responses_and_ttl_patches(void) {
     CHECK(dr_dns_get_rcode(response, response_len) == DR_DNS_RCODE_NXDOMAIN);
     CHECK(read_u16(response + 6U) == 0U);
 
+    CHECK(dr_dns_build_error_response(k_query, sizeof(k_query), DR_DNS_RCODE_SERVFAIL, response, &response_len));
+    CHECK(dr_dns_get_rcode(response, response_len) == DR_DNS_RCODE_SERVFAIL);
+
+    CHECK(dr_dns_build_error_response(k_query, sizeof(k_query), DR_DNS_RCODE_REFUSED, response, &response_len));
+    CHECK(dr_dns_get_rcode(response, response_len) == DR_DNS_RCODE_REFUSED);
+
     memcpy(response, k_query, sizeof(k_query));
     write_u16(response + 4U, 0U);
     CHECK(dr_dns_build_error_response(response, DR_DNS_HEADER_SIZE, DR_DNS_RCODE_FORMERR, response, &response_len));

@@ -97,6 +97,8 @@ class FakeUpstream:
             except socket.timeout:
                 continue
             self.count += 1
+            if question_name(data) == "silent.example":
+                continue
             if question_name(data) == "mismatch.example":
                 wrong_query = query_packet(struct.unpack("!H", data[:2])[0], "wrong-answer.example")
                 self.sock.sendto(upstream_response(wrong_query, bytes([198, 51, 100, 200])), addr)
@@ -198,6 +200,11 @@ def main():
         assert cached_header[0] == 0x3334 and cached[-4:] == bytes([203, 0, 113, 9])
         time.sleep(0.2)
         assert upstream.count == 3
+
+        servfail = ask(bind_port, 0x4444, "silent.example", timeout=8.0)
+        servfail_header = struct.unpack("!HHHHHH", servfail[:12])
+        assert servfail_header[0] == 0x4444 and servfail_header[1] & 0xF == 2 and servfail_header[3] == 0
+        assert question_name(servfail) == "silent.example"
     finally:
         proc.terminate()
         try:

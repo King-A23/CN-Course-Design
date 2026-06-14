@@ -11,6 +11,8 @@ typedef struct DrPendingRequest {
     uint16_t client_id;
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
+    uint8_t query_packet[DR_DNS_MAX_PACKET_SIZE];
+    size_t query_len;
     uint64_t started_ms;
     char qname[DR_DNS_MAX_DOMAIN_LEN + 1];
     uint16_t qtype;
@@ -31,6 +33,8 @@ int dr_pending_map_insert(
     uint16_t client_id,
     const struct sockaddr *client_addr,
     socklen_t client_addr_len,
+    const uint8_t *query_packet,
+    size_t query_len,
     const char *qname,
     uint16_t qtype,
     uint16_t qclass,
@@ -38,7 +42,12 @@ int dr_pending_map_insert(
     uint16_t *upstream_id
 );
 int dr_pending_map_remove(DrPendingMap *map, uint16_t upstream_id, DrPendingRequest *out_request);
-size_t dr_pending_map_expire(DrPendingMap *map, uint64_t now_ms, uint32_t timeout_ms);
+int dr_pending_map_pop_expired(
+    DrPendingMap *map,
+    uint64_t now_ms,
+    uint32_t timeout_ms,
+    DrPendingRequest *out_request
+);
 size_t dr_pending_map_active_count(const DrPendingMap *map);
 
 #endif

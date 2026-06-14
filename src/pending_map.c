@@ -35,6 +35,8 @@ int dr_pending_map_insert(
     uint16_t client_id,
     const struct sockaddr *client_addr,
     socklen_t client_addr_len,
+    const uint8_t *query_packet,
+    size_t query_len,
     const char *qname,
     uint16_t qtype,
     uint16_t qclass,
@@ -45,6 +47,7 @@ int dr_pending_map_insert(
     uint16_t candidate;
 
     if (map == NULL || map->slots == NULL || client_addr == NULL || qname == NULL ||
+        query_packet == NULL || query_len == 0U || query_len > DR_DNS_MAX_PACKET_SIZE ||
         client_addr_len == 0 || (size_t)client_addr_len > sizeof(struct sockaddr_storage)) {
         return 0;
     }
@@ -63,6 +66,8 @@ int dr_pending_map_insert(
             request->client_id = client_id;
             memcpy(&request->client_addr, client_addr, (size_t)client_addr_len);
             request->client_addr_len = client_addr_len;
+            memcpy(request->query_packet, query_packet, query_len);
+            request->query_len = query_len;
             request->started_ms = started_ms;
             strncpy(request->qname, qname, sizeof(request->qname) - 1);
             request->qtype = qtype;
@@ -99,24 +104,31 @@ int dr_pending_map_remove(DrPendingMap *map, uint16_t upstream_id, DrPendingRequ
     return 1;
 }
 
-size_t dr_pending_map_expire(DrPendingMap *map, uint64_t now_ms, uint32_t timeout_ms) {
-    size_t expired = 0U;
+int dr_pending_map_pop_expired(
+    DrPendingMap *map,
+    uint64_t now_ms,
+    uint32_t timeout_ms,
+    DrPendingRequest *out_request
+) {
     uint32_t index;
 
     if (map == NULL || map->slots == NULL) {
-        return 0U;
+        return 0;
     }
 
     for (index = 0; index < DR_PENDING_SLOT_COUNT; ++index) {
         DrPendingRequest *request = &map->slots[index];
         if (request->active && now_ms - request->started_ms >= (uint64_t)timeout_ms) {
+            if (out_request != NULL) {
+                *out_request = *request;
+            }
             memset(request, 0, sizeof(*request));
             map->active_count -= 1U;
-            expired += 1U;
+            return 1;
         }
     }
 
-    return expired;
+    return 0;
 }
 
 size_t dr_pending_map_active_count(const DrPendingMap *map) {

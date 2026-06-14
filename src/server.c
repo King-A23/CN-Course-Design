@@ -200,13 +200,15 @@ static int handle_client_packet(
             parsed.id,
             client_addr,
             client_addr_len,
+            packet,
+            packet_len,
             parsed.qname,
             parsed.qtype,
             parsed.qclass,
             now_ms,
             &upstream_id)) {
-        dr_log_error("pending map is full, dropping %s", parsed.qname);
-        return 0;
+        dr_log_error("reply REFUSED because pending map insert failed for %s", parsed.qname);
+        return respond_with_error(server, packet, packet_len, DR_DNS_RCODE_REFUSED, client_addr, client_addr_len);
     }
 
     memcpy(response, packet, packet_len);
@@ -325,7 +327,8 @@ int dr_server_run(const DrConfig *config) {
         int ready;
         int received;
         uint64_t now_ms;
-        size_t expired;
+        size_t expired_count = 0U;
+        DrPendingRequest expired_request;
 
         FD_ZERO(&readfds);
         FD_SET(server.sock, &readfds);
@@ -334,10 +337,25 @@ int dr_server_run(const DrConfig *config) {
 
         ready = select((int)server.sock + 1, &readfds, NULL, NULL, &timeout);
         now_ms = dr_now_ms();
-        expired = dr_pending_map_expire(&server.pending_map, now_ms, server.config.upstream_timeout_ms);
+        while (dr_pending_map_pop_expired(
+                &server.pending_map,
+                now_ms,
+                server.config.upstream_timeout_ms,
+                &expired_request)) {
+            expired_count += 1U;
+            if (!respond_with_error(
+                    &server,
+                    expired_request.query_packet,
+                    expired_request.query_len,
+                    DR_DNS_RCODE_SERVFAIL,
+                    (const struct sockaddr *)&expired_request.client_addr,
+                    expired_request.client_addr_len)) {
+                dr_log_error("failed to reply SERVFAIL for timed out upstream request %s", expired_request.qname);
+            }
+        }
         dr_cache_expire(&server.cache, now_ms);
-        if (expired > 0U) {
-            dr_log_verbose("expired %u upstream requests", (unsigned)expired);
+        if (expired_count > 0U) {
+            dr_log_verbose("expired %u upstream requests", (unsigned)expired_count);
         }
 
         if (ready < 0) {
