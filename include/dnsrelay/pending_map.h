@@ -25,9 +25,13 @@ typedef struct DrPendingMap {
     size_t active_count; // 当前等待上游响应的请求数量
 } DrPendingMap;
 
+// 初始化待处理请求映射表。
 int dr_pending_map_init(DrPendingMap *map);
+// 释放待处理请求映射表。
 void dr_pending_map_free(DrPendingMap *map);
+// 按上游请求 ID 获取仍在等待响应的请求。
 DrPendingRequest *dr_pending_map_get(DrPendingMap *map, uint16_t upstream_id);
+// 保存客户端请求信息并分配新的上游请求 ID。
 int dr_pending_map_insert(
     DrPendingMap *map,
     uint16_t client_id,
@@ -41,13 +45,16 @@ int dr_pending_map_insert(
     uint64_t started_ms,
     uint16_t *upstream_id
 );
+// 删除指定上游请求 ID 的映射并可选返回原请求信息。
 int dr_pending_map_remove(DrPendingMap *map, uint16_t upstream_id, DrPendingRequest *out_request);
+// 弹出一个超时未收到响应的上游请求。
 int dr_pending_map_pop_expired(
     DrPendingMap *map,
     uint64_t now_ms,
     uint32_t timeout_ms,
     DrPendingRequest *out_request
 );
+// 返回当前仍在等待上游响应的请求数量。
 size_t dr_pending_map_active_count(const DrPendingMap *map);
 
 #endif

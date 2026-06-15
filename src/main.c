@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 
+// 解析命令行参数、初始化日志并启动 DNS 中继服务。
 int main(int argc, char **argv) {
     DrConfig config;
     char errbuf[128];

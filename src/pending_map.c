@@ -5,6 +5,7 @@
 
 #define DR_PENDING_SLOT_COUNT 65536U
 
+// 初始化待处理请求映射表，为所有可能的 16 位 ID 分配槽位。
 int dr_pending_map_init(DrPendingMap *map) {
     memset(map, 0, sizeof(*map));
     map->slots = (DrPendingRequest *)calloc(DR_PENDING_SLOT_COUNT, sizeof(DrPendingRequest));
@@ -15,11 +16,13 @@ int dr_pending_map_init(DrPendingMap *map) {
     return 1;
 }
 
+// 释放待处理请求映射表并重置状态。
 void dr_pending_map_free(DrPendingMap *map) {
     free(map->slots);
     memset(map, 0, sizeof(*map));
 }
 
+// 按上游请求 ID 获取仍在等待响应的请求。
 DrPendingRequest *dr_pending_map_get(DrPendingMap *map, uint16_t upstream_id) {
     if (map == NULL || map->slots == NULL) {
         return NULL;
@@ -30,6 +33,7 @@ DrPendingRequest *dr_pending_map_get(DrPendingMap *map, uint16_t upstream_id) {
     return &map->slots[upstream_id];
 }
 
+// 保存客户端请求信息并分配一个未占用的上游请求 ID。
 int dr_pending_map_insert(
     DrPendingMap *map,
     uint16_t client_id,
@@ -57,6 +61,7 @@ int dr_pending_map_insert(
         candidate = 1;
     }
 
+    // 从 next_id 开始顺序探测，跳过 0 号 ID 并避开仍在使用的槽位。
     for (attempts = 0; attempts < DR_PENDING_SLOT_COUNT - 1U; ++attempts) {
         if (!map->slots[candidate].active) {
             DrPendingRequest *request = &map->slots[candidate];
@@ -91,6 +96,7 @@ int dr_pending_map_insert(
     return 0;
 }
 
+// 删除指定上游请求 ID 的映射并可选返回原请求信息。
 int dr_pending_map_remove(DrPendingMap *map, uint16_t upstream_id, DrPendingRequest *out_request) {
     DrPendingRequest *request = dr_pending_map_get(map, upstream_id);
     if (request == NULL) {
@@ -104,6 +110,7 @@ int dr_pending_map_remove(DrPendingMap *map, uint16_t upstream_id, DrPendingRequ
     return 1;
 }
 
+// 弹出一个超时未收到响应的上游请求。
 int dr_pending_map_pop_expired(
     DrPendingMap *map,
     uint64_t now_ms,
@@ -131,6 +138,7 @@ int dr_pending_map_pop_expired(
     return 0;
 }
 
+// 返回当前仍在等待上游响应的请求数量。
 size_t dr_pending_map_active_count(const DrPendingMap *map) {
     return map != NULL ? map->active_count : 0U;
 }

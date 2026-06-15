@@ -10,6 +10,7 @@
 #define DR_LOCAL_TABLE_TTL 60U
 #define DR_LOCAL_TABLE_INITIAL_CAPACITY 512U
 
+// 使用 FNV-1a 哈希算法为规范化域名生成哈希值。
 static uint32_t hash_name(const char *text) {
     uint32_t value = 2166136261u;
     const unsigned char *cursor = (const unsigned char *)text;
@@ -20,6 +21,7 @@ static uint32_t hash_name(const char *text) {
     return value;
 }
 
+// 复制域名字符串并交给本地域名表持有。
 static char *dup_text(const char *text) {
     size_t len = strlen(text);
     char *copy = (char *)malloc(len + 1);
@@ -30,6 +32,7 @@ static char *dup_text(const char *text) {
     return copy;
 }
 
+// 初始化或清空一段本地域名表槽位。
 static void clear_entries(DrLocalEntry *entries, size_t capacity) {
     size_t index;
     for (index = 0; index < capacity; ++index) {
@@ -39,6 +42,7 @@ static void clear_entries(DrLocalEntry *entries, size_t capacity) {
     }
 }
 
+// 将已有域名节点重新放入扩容后的开放寻址表。
 static void place_existing_entry(DrLocalEntry *entries, size_t capacity, char *domain, uint32_t ipv4_be) {
     size_t mask = capacity - 1U;
     size_t slot = (size_t)(hash_name(domain) & (uint32_t)mask);
@@ -51,6 +55,7 @@ static void place_existing_entry(DrLocalEntry *entries, size_t capacity, char *d
     entries[slot].in_use = 1;
 }
 
+// 确保本地域名表已经分配初始容量。
 static int ensure_table_ready(DrLocalTable *table) {
     if (table->entries != NULL) {
         return 1;
@@ -66,6 +71,7 @@ static int ensure_table_ready(DrLocalTable *table) {
     return 1;
 }
 
+// 将本地域名表容量翻倍并重新散列已有条目。
 static int expand_table(DrLocalTable *table) {
     DrLocalEntry *new_entries = NULL;
     size_t new_capacity;
@@ -90,6 +96,7 @@ static int expand_table(DrLocalTable *table) {
     return 1;
 }
 
+// 插入或更新一条本地域名规则，哈希冲突时使用线性探测。
 static int insert_entry(DrLocalTable *table, const char *domain, uint32_t ipv4_be) {
     size_t mask;
     size_t slot;
@@ -114,6 +121,7 @@ static int insert_entry(DrLocalTable *table, const char *domain, uint32_t ipv4_b
         }
     }
 
+    // 负载因子超过 70% 时扩容，降低线性探测的碰撞成本。
     if ((table->size + 1U) * 10U > table->capacity * 7U) {
         if (!expand_table(table)) {
             return 0;
@@ -135,6 +143,7 @@ static int insert_entry(DrLocalTable *table, const char *domain, uint32_t ipv4_b
     return 1;
 }
 
+// 从 dnsrelay.txt 样式文件加载本地域名规则。
 int dr_local_table_load(DrLocalTable *table, const char *path, char *errbuf, size_t errbuf_size) {
     FILE *file = NULL;
     char line[1024];
@@ -163,6 +172,7 @@ int dr_local_table_load(DrLocalTable *table, const char *path, char *errbuf, siz
         uint32_t ipv4_be = 0;
         char *cursor = line;
 
+        // 跳过空行和注释行，只解析有效的 IP 域名规则。
         while (*cursor == ' ' || *cursor == '\t') {
             ++cursor;
         }
@@ -195,6 +205,7 @@ int dr_local_table_load(DrLocalTable *table, const char *path, char *errbuf, siz
     return 1;
 }
 
+// 释放本地域名表中的域名字符串和表空间。
 void dr_local_table_free(DrLocalTable *table) {
     size_t index;
 
@@ -208,6 +219,7 @@ void dr_local_table_free(DrLocalTable *table) {
     memset(table, 0, sizeof(*table));
 }
 
+// 查询域名是否命中本地解析、屏蔽规则或未命中。
 DrLocalLookupResult dr_local_table_lookup(const DrLocalTable *table, const char *qname) {
     DrLocalLookupResult result;
     char normalized[DR_DNS_MAX_DOMAIN_LEN + 1];
@@ -229,6 +241,7 @@ DrLocalLookupResult dr_local_table_lookup(const DrLocalTable *table, const char 
     mask = table->capacity - 1;
     slot = (size_t)(hash_name(normalized) & (uint32_t)mask);
 
+    // 查询和插入使用同一套线性探测规则，直到遇到空槽或命中域名。
     while (table->entries[slot].in_use) {
         if (strcmp(table->entries[slot].domain, normalized) == 0) {
             result.ipv4_be = table->entries[slot].ipv4_be;
@@ -245,6 +258,7 @@ DrLocalLookupResult dr_local_table_lookup(const DrLocalTable *table, const char 
     return result;
 }
 
+// 返回本地域名表中已加载的规则数量。
 size_t dr_local_table_size(const DrLocalTable *table) {
     return table != NULL ? table->size : 0U;
 }

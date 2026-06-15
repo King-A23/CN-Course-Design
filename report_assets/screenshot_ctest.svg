@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="466" viewBox="0 0 1180 466">
+  <rect x="0" y="0" width="1180" height="466" rx="14" fill="#1f2329"/>
+  <rect x="0" y="0" width="1180" height="42" rx="14" fill="#303741"/>
+  <circle cx="28" cy="21" r="7" fill="#ff5f57"/>
+  <circle cx="50" cy="21" r="7" fill="#ffbd2e"/>
+  <circle cx="72" cy="21" r="7" fill="#28c840"/>
+  <text x="96" y="27" fill="#d7dce2" font-family="Menlo, Consolas, monospace" font-size="15">ctest --test-dir build --output-on-failure</text>
+  <style>.term { fill: #f0f3f6; font-family: Menlo, Consolas, monospace; font-size: 15px; }</style>
+  <text x="28" y="70" class="term">Test project /Users/anyuchen/Projects/work/CN-Course-Design/build</text><text x="28" y="92" class="term">    Start 1: test_config</text><text x="28" y="114" class="term">1/6 Test #1: test_config ......................   Passed    0.00 sec</text><text x="28" y="136" class="term">    Start 2: test_local_table</text><text x="28" y="158" class="term">2/6 Test #2: test_local_table .................   Passed    0.00 sec</text><text x="28" y="180" class="term">    Start 3: test_dns_packet</text><text x="28" y="202" class="term">3/6 Test #3: test_dns_packet ..................   Passed    0.00 sec</text><text x="28" y="224" class="term">    Start 4: test_pending_map</text><text x="28" y="246" class="term">4/6 Test #4: test_pending_map .................   Passed    0.00 sec</text><text x="28" y="268" class="term">    Start 5: test_cache</text><text x="28" y="290" class="term">5/6 Test #5: test_cache .......................   Passed    0.00 sec</text><text x="28" y="312" class="term">    Start 6: test_server_integration</text><text x="28" y="334" class="term">6/6 Test #6: test_server_integration ..........   Passed    0.40 sec</text><text x="28" y="356" class="term"></text><text x="28" y="378" class="term">100% tests passed, 0 tests failed out of 6</text><text x="28" y="400" class="term"></text><text x="28" y="422" class="term">Total Test time (real) =   0.41 sec</text>
+</svg>

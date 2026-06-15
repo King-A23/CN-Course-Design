@@ -1,0 +1,138 @@
+{
+  "tested_at": "2026-06-14 19:36:22 CST +0800",
+  "repository": "/Users/anyuchen/Projects/work/CN-Course-Design",
+  "binary": "build/dnsrelay",
+  "build_command": "cmake -S . -B build -DDNSRELAY_DEV_PORT=8053 -DDNSRELAY_BUILD_PERF_TESTS=ON && cmake --build build -j",
+  "baseline_check": "ctest --test-dir build --output-on-failure: 7/7 Passed",
+  "perf_check": "ctest --test-dir build -L perf --output-on-failure: 1/1 Passed",
+  "environment": {
+    "os": "Darwin 25.5.0 arm64",
+    "os_product_version": "26.5.1",
+    "cpu": "Apple M5 Pro",
+    "logical_cpus": 15,
+    "memory_bytes": 51539607552
+  },
+  "method": {
+    "tool": "tests/perf_dnsrelay.py",
+    "network": "127.0.0.1 UDP loopback",
+    "upstream": "local fake upstream DNS server",
+    "requests_per_local_or_cache_scenario": 3000,
+    "requests_per_relay_scenario": 1000,
+    "client_matrix": [1, 4, 8],
+    "scenarios": [
+      "local_table_hit",
+      "cache_hit",
+      "relay_miss"
+    ]
+  },
+  "results": [
+    {
+      "clients": 1,
+      "scenario": "local_table_hit",
+      "requests": 3000,
+      "qps": 10390.545989145627,
+      "avg_ms": 0.09397103933345836,
+      "p50_ms": 0.08662499021738768,
+      "p95_ms": 0.13016699813306332,
+      "p99_ms": 0.1858340110629797,
+      "max_ms": 1.16154202260077,
+      "upstream_requests": 0
+    },
+    {
+      "clients": 1,
+      "scenario": "cache_hit",
+      "requests": 3000,
+      "qps": 10949.016678086,
+      "avg_ms": 0.08966418929048814,
+      "p50_ms": 0.08691602852195501,
+      "p95_ms": 0.1100839872378856,
+      "p99_ms": 0.12974999845027924,
+      "max_ms": 0.19449999672360718,
+      "upstream_requests": 0
+    },
+    {
+      "clients": 1,
+      "scenario": "relay_miss",
+      "requests": 1000,
+      "qps": 5129.628928994681,
+      "avg_ms": 0.19273544964380562,
+      "p50_ms": 0.1771249808371067,
+      "p95_ms": 0.24987501092255116,
+      "p99_ms": 0.6181249918881804,
+      "max_ms": 1.3885420048609376,
+      "upstream_requests": 1000
+    },
+    {
+      "clients": 4,
+      "scenario": "local_table_hit",
+      "requests": 3000,
+      "qps": 13870.801234813964,
+      "avg_ms": 0.2834084436666065,
+      "p50_ms": 0.27108300128020346,
+      "p95_ms": 0.36387500585988164,
+      "p99_ms": 0.44299999717622995,
+      "max_ms": 0.7826249930076301,
+      "upstream_requests": 0
+    },
+    {
+      "clients": 4,
+      "scenario": "cache_hit",
+      "requests": 3000,
+      "qps": 14655.405616335247,
+      "avg_ms": 0.27108297563002753,
+      "p50_ms": 0.26208299095742404,
+      "p95_ms": 0.3296670038253069,
+      "p99_ms": 0.40895797428674996,
+      "max_ms": 0.5254170100670308,
+      "upstream_requests": 0
+    },
+    {
+      "clients": 4,
+      "scenario": "relay_miss",
+      "requests": 1000,
+      "qps": 7258.303045206798,
+      "avg_ms": 0.5477163185423706,
+      "p50_ms": 0.5357920017559081,
+      "p95_ms": 0.6302499969024211,
+      "p99_ms": 0.6668329879175872,
+      "max_ms": 0.8033329795580357,
+      "upstream_requests": 1000
+    },
+    {
+      "clients": 8,
+      "scenario": "local_table_hit",
+      "requests": 3000,
+      "qps": 13808.552075086138,
+      "avg_ms": 0.5692031060655912,
+      "p50_ms": 0.5482079868670553,
+      "p95_ms": 0.7362919859588146,
+      "p99_ms": 0.9213750017806888,
+      "max_ms": 1.2304169940762222,
+      "upstream_requests": 0
+    },
+    {
+      "clients": 8,
+      "scenario": "cache_hit",
+      "requests": 3000,
+      "qps": 14684.102086846546,
+      "avg_ms": 0.5413080463864995,
+      "p50_ms": 0.5333750159479678,
+      "p95_ms": 0.6212500156834722,
+      "p99_ms": 0.6643749948125333,
+      "max_ms": 0.7394170097541064,
+      "upstream_requests": 0
+    },
+    {
+      "clients": 8,
+      "scenario": "relay_miss",
+      "requests": 1000,
+      "qps": 7247.101101998978,
+      "avg_ms": 1.0958081639255397,
+      "p50_ms": 1.0990409937221557,
+      "p95_ms": 1.2080000014975667,
+      "p99_ms": 1.2620000052265823,
+      "max_ms": 1.2824579898733646,
+      "upstream_requests": 1000
+    }
+  ]
+}

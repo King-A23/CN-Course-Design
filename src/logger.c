@@ -9,6 +9,7 @@
 
 static DrDebugLevel g_level = DR_LOG_NONE;
 
+// 使用当前平台的安全接口把时间戳转换为本地时间。
 static void localtime_safe(time_t now, struct tm *result) {
 #ifdef _WIN32
     localtime_s(result, &now);
@@ -17,6 +18,7 @@ static void localtime_safe(time_t now, struct tm *result) {
 #endif
 }
 
+// 按指定级别格式化输出一行带时间戳的日志。
 static void log_with_level(FILE *stream, const char *label, const char *fmt, va_list args) {
     struct tm tm_now;
     time_t now = time(NULL);
@@ -31,14 +33,17 @@ static void log_with_level(FILE *stream, const char *label, const char *fmt, va_
     fflush(stream);
 }
 
+// 设置全局日志输出等级。
 void dr_logger_init(DrDebugLevel level) {
     g_level = level;
 }
 
+// 获取当前全局日志等级。
 DrDebugLevel dr_logger_level(void) {
     return g_level;
 }
 
+// 在基础调试等级开启时输出普通运行日志。
 void dr_log_basic(const char *fmt, ...) {
     va_list args;
 
@@ -50,6 +55,7 @@ void dr_log_basic(const char *fmt, ...) {
     va_end(args);
 }
 
+// 在详细调试等级开启时输出更细粒度的调试日志。
 void dr_log_verbose(const char *fmt, ...) {
     va_list args;
 
@@ -61,6 +67,7 @@ void dr_log_verbose(const char *fmt, ...) {
     va_end(args);
 }
 
+// 无条件向标准错误输出错误日志。
 void dr_log_error(const char *fmt, ...) {
     va_list args;
 

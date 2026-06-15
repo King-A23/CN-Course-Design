@@ -46,14 +46,23 @@ typedef struct DrTtlPatchList {
     size_t count; // 已记录的 TTL 字段数量
 } DrTtlPatchList;
 
+// 从 DNS 报文中解析固定 12 字节头部。
 int dr_dns_parse_header(const uint8_t *packet, size_t packet_len, DrDnsHeader *header);
+// 解析 DNS 查询问题段，提取域名、类型、类别和头部标志。
 int dr_dns_parse_query(const uint8_t *packet, size_t packet_len, DrParsedQuery *parsed, char *errbuf, size_t errbuf_size);
+// 将域名规范化为小写且无结尾点的形式。
 int dr_dns_normalize_name(const char *input, char *output, size_t output_size);
+// 读取 DNS 报文头部的事务 ID。
 uint16_t dr_dns_read_id(const uint8_t *packet, size_t packet_len);
+// 写入 DNS 报文头部的事务 ID。
 void dr_dns_write_id(uint8_t *packet, size_t packet_len, uint16_t id);
+// 判断 DNS 报文是否为响应报文。
 int dr_dns_is_response(const uint8_t *packet, size_t packet_len);
+// 读取 DNS 报文中的 opcode 操作码。
 uint8_t dr_dns_get_opcode(const uint8_t *packet, size_t packet_len);
+// 读取 DNS 响应码 rcode。
 uint8_t dr_dns_get_rcode(const uint8_t *packet, size_t packet_len);
+// 根据本地域名表命中结果构造 A 记录响应。
 int dr_dns_build_a_response(
     const uint8_t *query,
     size_t query_len,
@@ -63,6 +72,7 @@ int dr_dns_build_a_response(
     uint8_t *out,
     size_t *out_len
 );
+// 根据原始查询构造指定错误码的 DNS 响应。
 int dr_dns_build_error_response(
     const uint8_t *query,
     size_t query_len,
@@ -70,7 +80,9 @@ int dr_dns_build_error_response(
     uint8_t *out,
     size_t *out_len
 );
+// 收集响应中各资源记录 TTL 的偏移和最小 TTL。
 int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList *patches, uint32_t *min_ttl);
+// 按缓存已保存时间修正响应报文中的 TTL 字段。
 void dr_dns_apply_ttl_patches(uint8_t *packet, size_t packet_len, const DrTtlPatchList *patches, uint32_t elapsed_sec);
 
 #endif

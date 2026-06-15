@@ -29,9 +29,13 @@ typedef struct DrLocalTable {
     uint32_t local_ttl; // 本地构造响应时使用的 TTL 秒数
 } DrLocalTable;
 
+// 从 dnsrelay.txt 样式文件加载本地域名规则。
 int dr_local_table_load(DrLocalTable *table, const char *path, char *errbuf, size_t errbuf_size);
+// 释放本地域名表中的域名字符串和表空间。
 void dr_local_table_free(DrLocalTable *table);
+// 查询域名是否命中本地解析、屏蔽规则或未命中。
 DrLocalLookupResult dr_local_table_lookup(const DrLocalTable *table, const char *qname);
+// 返回本地域名表中已加载的规则数量。
 size_t dr_local_table_size(const DrLocalTable *table);
 
 #endif

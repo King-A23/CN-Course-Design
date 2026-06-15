@@ -1,0 +1,16 @@
+[11:33:57.600] INFO  dnsrelay started bind=0.0.0.0:59428 upstream=127.0.0.1:55407 table=/Users/anyuchen/Projects/work/CN-Course-Design/dnsrelay.txt entries=201 cache=128
+[11:33:57.820] INFO  client=127.0.0.1:49938 id=59240 qname=test1 qtype=1 qclass=1
+[11:33:57.820] DEBUG local hit for test1
+[11:33:57.829] INFO  client=127.0.0.1:62676 id=1772 qname=www.5dsoft.com qtype=1 qclass=1
+[11:33:57.829] DEBUG blocked domain www.5dsoft.com
+[11:33:57.837] INFO  client=127.0.0.1:60212 id=15384 qname=www.5dsoft.com qtype=28 qclass=1
+[11:33:57.837] DEBUG blocked domain www.5dsoft.com
+[11:33:57.845] INFO  client=127.0.0.1:49678 id=36573 qname=relay-only.example qtype=1 qclass=1
+[11:33:57.845] DEBUG forwarded relay-only.example with upstream id=1
+[11:33:57.845] DEBUG reply upstream response for relay-only.example to client id=36573
+[11:33:58.966] INFO  client=127.0.0.1:61083 id=15926 qname=relay-only.example qtype=1 qclass=1
+[11:33:58.966] DEBUG cache hit for relay-only.example
+[11:33:58.976] INFO  client=127.0.0.1:51879 id=19152 qname=mismatch.example qtype=1 qclass=1
+[11:33:58.976] DEBUG forwarded mismatch.example with upstream id=2
+[11:33:58.976] DEBUG drop upstream response id=2 because question mismatch: got wrong-answer.example/1/1 expected mismatch.example/1/1
+[11:33:59.029] DEBUG reply upstream response for mismatch.example to client id=19152

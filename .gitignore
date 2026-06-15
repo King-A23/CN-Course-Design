@@ -13,6 +13,9 @@ Testing/
 *.obj
 *.obj.d
 *.log
+*.py[cod]
+__pycache__/
+~$*.docx
 
 Thumbs.db
 .DS_Store

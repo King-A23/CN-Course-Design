@@ -25,9 +25,13 @@ typedef struct DrCache {
     uint64_t tick; // LRU 访问序号计数器
 } DrCache;
 
+// 初始化 DNS 响应缓存并按容量分配存储空间。
 int dr_cache_init(DrCache *cache, size_t capacity);
+// 释放缓存占用的内存并重置结构体状态。
 void dr_cache_free(DrCache *cache);
+// 清理已经超过有效期的缓存项。
 void dr_cache_expire(DrCache *cache, uint64_t now_ms);
+// 写入一条可缓存的 DNS 响应，同时记录 TTL 修正信息。
 int dr_cache_put(
     DrCache *cache,
     const char *qname,
@@ -39,6 +43,7 @@ int dr_cache_put(
     uint32_t min_ttl,
     uint64_t now_ms
 );
+// 按问题三元组查找缓存命中项，并改写响应 ID 与剩余 TTL。
 int dr_cache_lookup(
     DrCache *cache,
     const char *qname,
@@ -49,6 +54,7 @@ int dr_cache_lookup(
     uint8_t *out_packet,
     size_t *out_packet_len
 );
+// 返回当前仍然有效的缓存项数量。
 size_t dr_cache_size(const DrCache *cache);
 
 #endif

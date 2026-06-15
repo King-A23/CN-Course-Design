@@ -35,8 +35,11 @@ typedef struct DrConfig {
     uint32_t upstream_timeout_ms; // 等待上游响应的超时时间
 } DrConfig;
 
+// 填充程序运行所需的默认配置。
 void dr_config_set_defaults(DrConfig *config);
+// 解析命令行参数并生成最终配置。
 int dr_config_parse(DrConfig *config, int argc, char **argv, char *errbuf, size_t errbuf_size);
+// 打印命令行用法和默认配置说明。
 void dr_config_print_usage(const char *program_name);
 
 #endif

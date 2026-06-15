@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="378" viewBox="0 0 1180 378">
+  <rect x="0" y="0" width="1180" height="378" rx="14" fill="#1f2329"/>
+  <rect x="0" y="0" width="1180" height="42" rx="14" fill="#303741"/>
+  <circle cx="28" cy="21" r="7" fill="#ff5f57"/>
+  <circle cx="50" cy="21" r="7" fill="#ffbd2e"/>
+  <circle cx="72" cy="21" r="7" fill="#28c840"/>
+  <text x="96" y="27" fill="#d7dce2" font-family="Menlo, Consolas, monospace" font-size="15">dig: 上游中继与 Cache 命中</text>
+  <style>.term { fill: #f0f3f6; font-family: Menlo, Consolas, monospace; font-size: 15px; }</style>
+  <text x="28" y="70" class="term">$ dig @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer</text><text x="28" y="92" class="term"></text><text x="28" y="114" class="term">; &lt;&lt;&gt;&gt; DiG 9.10.6 &lt;&lt;&gt;&gt; @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer</text><text x="28" y="136" class="term">; (1 server found)</text><text x="28" y="158" class="term">;; global options: +cmd</text><text x="28" y="180" class="term">relay-only.example.	30	IN	A	203.0.113.9</text><text x="28" y="202" class="term"></text><text x="28" y="224" class="term">$ dig @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer</text><text x="28" y="246" class="term"></text><text x="28" y="268" class="term">; &lt;&lt;&gt;&gt; DiG 9.10.6 &lt;&lt;&gt;&gt; @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer</text><text x="28" y="290" class="term">; (1 server found)</text><text x="28" y="312" class="term">;; global options: +cmd</text><text x="28" y="334" class="term">relay-only.example.	29	IN	A	203.0.113.9</text>
+</svg>

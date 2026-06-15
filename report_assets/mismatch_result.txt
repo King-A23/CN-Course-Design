@@ -1,0 +1,6 @@
+$ dig @127.0.0.1 -p 59428 mismatch.example A +comments +noall +answer
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 59428 mismatch.example A +comments +noall +answer
+; (1 server found)
+;; global options: +cmd
+mismatch.example.	30	IN	A	203.0.113.9

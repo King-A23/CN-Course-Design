@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// 安全复制配置字符串并保证目标缓冲区以空字符结尾。
 static void copy_text(char *dst, size_t dst_size, const char *src) {
     if (dst_size == 0) {
         return;
@@ -15,6 +16,7 @@ static void copy_text(char *dst, size_t dst_size, const char *src) {
     dst[dst_size - 1] = '\0';
 }
 
+// 将端口文本解析为 1 到 65535 范围内的端口号。
 static int parse_port_text(const char *text, uint16_t *port) {
     char *end = NULL;
     unsigned long value;
@@ -35,6 +37,7 @@ static int parse_port_text(const char *text, uint16_t *port) {
     return 1;
 }
 
+// 从环境变量中读取开发调试用的绑定端口和上游端口。
 static void apply_port_env(DrConfig *config) {
     uint16_t port;
     const char *bind_port = getenv("DNSRELAY_BIND_PORT");
@@ -48,6 +51,7 @@ static void apply_port_env(DrConfig *config) {
     }
 }
 
+// 填充程序运行所需的默认配置。
 void dr_config_set_defaults(DrConfig *config) {
     memset(config, 0, sizeof(*config));
     config->debug_level = DR_LOG_NONE;
@@ -61,6 +65,7 @@ void dr_config_set_defaults(DrConfig *config) {
     apply_port_env(config);
 }
 
+// 写入配置解析错误信息并统一返回失败。
 static int set_error(char *errbuf, size_t errbuf_size, const char *message) {
     if (errbuf != NULL && errbuf_size > 0) {
         copy_text(errbuf, errbuf_size, message);
@@ -68,6 +73,7 @@ static int set_error(char *errbuf, size_t errbuf_size, const char *message) {
     return 0;
 }
 
+// 解析命令行参数并生成最终配置。
 int dr_config_parse(DrConfig *config, int argc, char **argv, char *errbuf, size_t errbuf_size) {
     int index = 1;
     uint32_t parsed_ipv4 = 0;
@@ -114,6 +120,7 @@ int dr_config_parse(DrConfig *config, int argc, char **argv, char *errbuf, size_
     return 1;
 }
 
+// 打印命令行用法和默认配置说明。
 void dr_config_print_usage(const char *program_name) {
     printf("Usage: %s [-d | -dd] [dns-server-ipaddr] [filename]\n", program_name);
     printf("Defaults:\n");

@@ -20,11 +20,13 @@ typedef struct DrServer {
     DrCache cache; // DNS 响应缓存
 } DrServer;
 
+// 通过 UDP socket 发送完整 DNS 报文。
 static int send_packet(dr_socket_t sock, const uint8_t *packet, size_t packet_len, const struct sockaddr *addr, socklen_t addr_len) {
     int sent = sendto(sock, (const char *)packet, (int)packet_len, 0, addr, addr_len);
     return sent == (int)packet_len;
 }
 
+// 创建并绑定服务端 UDP socket。
 static int init_server_socket(DrServer *server) {
     uint32_t bind_ip_be = 0U;
 
@@ -58,6 +60,7 @@ static int init_server_socket(DrServer *server) {
     return 1;
 }
 
+// 初始化上游 DNS 服务器地址。
 static int init_upstream_addr(DrServer *server) {
     uint32_t upstream_ip_be = 0U;
 
@@ -73,6 +76,7 @@ static int init_upstream_addr(DrServer *server) {
     return 1;
 }
 
+// 在上游响应成功且带有有效 TTL 时写入缓存。
 static int maybe_cache_response(DrServer *server, const DrPendingRequest *request, const uint8_t *packet, size_t packet_len, uint64_t now_ms) {
     DrTtlPatchList patches;
     uint32_t min_ttl = 0U;
@@ -99,12 +103,14 @@ static int maybe_cache_response(DrServer *server, const DrPendingRequest *reques
     );
 }
 
+// 输出客户端查询的基础日志信息。
 static void log_query_basic(const struct sockaddr *client_addr, socklen_t client_addr_len, const DrParsedQuery *query) {
     char client_text[64];
     dr_format_sockaddr(client_addr, client_addr_len, client_text, sizeof(client_text));
     dr_log_basic("client=%s id=%u qname=%s qtype=%u qclass=%u", client_text, query->id, query->qname, query->qtype, query->qclass);
 }
 
+// 构造指定 DNS 错误码并回复客户端。
 static int respond_with_error(
     DrServer *server,
     const uint8_t *query_packet,
@@ -121,6 +127,7 @@ static int respond_with_error(
     return send_packet(server->sock, response, response_len, client_addr, client_addr_len);
 }
 
+// 处理来自客户端的 DNS 查询报文。
 static int handle_client_packet(
     DrServer *server,
     const uint8_t *packet,
@@ -137,6 +144,7 @@ static int handle_client_packet(
     uint16_t upstream_id = 0U;
     char errbuf[128];
 
+    // 先做头部和查询形态校验，畸形或不支持的请求直接生成错误响应。
     if (!dr_dns_parse_header(packet, packet_len, &header)) {
         dr_log_verbose("drop malformed packet shorter than DNS header");
         return 1;
@@ -164,6 +172,7 @@ static int handle_client_packet(
 
     log_query_basic(client_addr, client_addr_len, &parsed);
 
+    // IN 类查询优先走本地域名表，可直接解析或返回屏蔽响应。
     if (parsed.qclass == 1U) {
         local = dr_local_table_lookup(&server->local_table, parsed.qname);
         if (local.kind == DR_LOCAL_BLOCKED) {
@@ -182,6 +191,7 @@ static int handle_client_packet(
         }
     }
 
+    // 本地未命中后查询缓存，命中时会自动改写事务 ID 和剩余 TTL。
     if (dr_cache_lookup(
             &server->cache,
             parsed.qname,
@@ -195,6 +205,7 @@ static int handle_client_packet(
         return send_packet(server->sock, response, response_len, client_addr, client_addr_len);
     }
 
+    // 转发到上游前记录客户端地址和原始 ID，等待响应回来后恢复。
     if (!dr_pending_map_insert(
             &server->pending_map,
             parsed.id,
@@ -223,6 +234,7 @@ static int handle_client_packet(
     return 1;
 }
 
+// 处理来自上游 DNS 服务器的响应报文。
 static int handle_upstream_packet(DrServer *server, uint8_t *packet, size_t packet_len, uint64_t now_ms) {
     uint16_t upstream_id = dr_dns_read_id(packet, packet_len);
     DrPendingRequest *pending = NULL;
@@ -230,6 +242,7 @@ static int handle_upstream_packet(DrServer *server, uint8_t *packet, size_t pack
     DrParsedQuery response_query;
     char errbuf[128];
 
+    // 上游响应必须能对应到先前转发出去的请求 ID。
     pending = dr_pending_map_get(&server->pending_map, upstream_id);
     if (pending == NULL) {
         dr_log_verbose("drop late or unknown upstream response id=%u", upstream_id);
@@ -240,6 +253,7 @@ static int handle_upstream_packet(DrServer *server, uint8_t *packet, size_t pack
         dr_log_verbose("drop upstream response id=%u because question parse failed: %s", upstream_id, errbuf);
         return 1;
     }
+    // 防止错误或伪造响应复用 ID，响应问题段必须与原请求一致。
     if (strcmp(response_query.qname, pending->qname) != 0 ||
         response_query.qtype != pending->qtype ||
         response_query.qclass != pending->qclass) {
@@ -259,6 +273,7 @@ static int handle_upstream_packet(DrServer *server, uint8_t *packet, size_t pack
     if (!dr_pending_map_remove(&server->pending_map, upstream_id, &request)) {
         return 1;
     }
+    // 缓存仍使用上游响应原文，发给客户端前再恢复客户端原始事务 ID。
     maybe_cache_response(server, &request, packet, packet_len, now_ms);
     dr_dns_write_id(packet, packet_len, request.client_id);
     dr_log_verbose("reply upstream response for %s to client id=%u", request.qname, request.client_id);
@@ -271,6 +286,7 @@ static int handle_upstream_packet(DrServer *server, uint8_t *packet, size_t pack
     );
 }
 
+// 按给定配置启动 DNS 中继服务主循环。
 int dr_server_run(const DrConfig *config) {
     DrServer server;
     int status = 1;
@@ -335,6 +351,7 @@ int dr_server_run(const DrConfig *config) {
         timeout.tv_sec = 0;
         timeout.tv_usec = 200000;
 
+        // select 超时醒来时也会清理 pending 请求和缓存，避免长期堆积。
         ready = select((int)server.sock + 1, &readfds, NULL, NULL, &timeout);
         now_ms = dr_now_ms();
         while (dr_pending_map_pop_expired(
@@ -381,6 +398,7 @@ int dr_server_run(const DrConfig *config) {
         }
 
         now_ms = dr_now_ms();
+        // 根据来源地址和 QR 位区分上游响应与客户端查询。
         if (dr_dns_is_response(packet, (size_t)received) &&
             dr_sockaddr_equal(
                 (const struct sockaddr *)&src_addr,

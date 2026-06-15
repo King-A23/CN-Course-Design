@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="224" viewBox="0 0 1180 224">
+  <rect x="0" y="0" width="1180" height="224" rx="14" fill="#1f2329"/>
+  <rect x="0" y="0" width="1180" height="42" rx="14" fill="#303741"/>
+  <circle cx="28" cy="21" r="7" fill="#ff5f57"/>
+  <circle cx="50" cy="21" r="7" fill="#ffbd2e"/>
+  <circle cx="72" cy="21" r="7" fill="#28c840"/>
+  <text x="96" y="27" fill="#d7dce2" font-family="Menlo, Consolas, monospace" font-size="15">dig: 本地 test1 A 解析</text>
+  <style>.term { fill: #f0f3f6; font-family: Menlo, Consolas, monospace; font-size: 15px; }</style>
+  <text x="28" y="70" class="term">$ dig @127.0.0.1 -p 59428 test1 A +comments +noall +answer</text><text x="28" y="92" class="term"></text><text x="28" y="114" class="term">; &lt;&lt;&gt;&gt; DiG 9.10.6 &lt;&lt;&gt;&gt; @127.0.0.1 -p 59428 test1 A +comments +noall +answer</text><text x="28" y="136" class="term">; (1 server found)</text><text x="28" y="158" class="term">;; global options: +cmd</text><text x="28" y="180" class="term">test1.			60	IN	A	11.111.11.111</text>
+</svg>

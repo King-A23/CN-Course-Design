@@ -1,0 +1,13 @@
+$ dig @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer
+; (1 server found)
+;; global options: +cmd
+relay-only.example.	30	IN	A	203.0.113.9
+
+$ dig @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 59428 relay-only.example A +comments +noall +answer
+; (1 server found)
+;; global options: +cmd
+relay-only.example.	29	IN	A	203.0.113.9

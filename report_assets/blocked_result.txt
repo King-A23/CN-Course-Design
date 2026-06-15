@@ -1,0 +1,34 @@
+$ dig @127.0.0.1 -p 59428 www.5dsoft.com A +comments
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 59428 www.5dsoft.com A +comments
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 1772
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;www.5dsoft.com.			IN	A
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#59428(127.0.0.1)
+;; WHEN: Sat Jun 13 11:33:57 CST 2026
+;; MSG SIZE  rcvd: 32
+
+
+$ dig @127.0.0.1 -p 59428 www.5dsoft.com AAAA +comments
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 -p 59428 www.5dsoft.com AAAA +comments
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 15384
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;www.5dsoft.com.			IN	AAAA
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#59428(127.0.0.1)
+;; WHEN: Sat Jun 13 11:33:57 CST 2026
+;; MSG SIZE  rcvd: 32

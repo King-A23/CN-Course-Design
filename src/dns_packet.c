@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+// 将 ASCII 大写字母转换为小写，用于域名规范化。
 static unsigned char ascii_lower(unsigned char ch) {
     if (ch >= 'A' && ch <= 'Z') {
         return (unsigned char)(ch + ('a' - 'A'));
@@ -10,10 +11,12 @@ static unsigned char ascii_lower(unsigned char ch) {
     return ch;
 }
 
+// 按网络字节序读取 16 位整数。
 static uint16_t read_u16(const uint8_t *bytes) {
     return (uint16_t)(((uint16_t)bytes[0] << 8) | (uint16_t)bytes[1]);
 }
 
+// 按网络字节序读取 32 位整数。
 static uint32_t read_u32(const uint8_t *bytes) {
     return ((uint32_t)bytes[0] << 24) |
            ((uint32_t)bytes[1] << 16) |
@@ -21,11 +24,13 @@ static uint32_t read_u32(const uint8_t *bytes) {
            (uint32_t)bytes[3];
 }
 
+// 按网络字节序写入 16 位整数。
 static void write_u16(uint8_t *bytes, uint16_t value) {
     bytes[0] = (uint8_t)((value >> 8) & 0xffU);
     bytes[1] = (uint8_t)(value & 0xffU);
 }
 
+// 按网络字节序写入 32 位整数。
 static void write_u32(uint8_t *bytes, uint32_t value) {
     bytes[0] = (uint8_t)((value >> 24) & 0xffU);
     bytes[1] = (uint8_t)((value >> 16) & 0xffU);
@@ -33,6 +38,7 @@ static void write_u32(uint8_t *bytes, uint32_t value) {
     bytes[3] = (uint8_t)(value & 0xffU);
 }
 
+// 将点分域名编码为 DNS 标签长度加内容的线格式。
 static int write_name(const char *name, uint8_t *out, size_t out_size, size_t *written) {
     const char *label_start = name;
     size_t total = 0U;
@@ -47,6 +53,7 @@ static int write_name(const char *name, uint8_t *out, size_t out_size, size_t *w
         return 1;
     }
 
+    // DNS 域名按标签逐段写入，每段长度最多 63 字节。
     while (*label_start != '\0') {
         const char *label_end = strchr(label_start, '.');
         size_t label_len = label_end == NULL ? strlen(label_start) : (size_t)(label_end - label_start);
@@ -73,6 +80,7 @@ static int write_name(const char *name, uint8_t *out, size_t out_size, size_t *w
     return 1;
 }
 
+// 根据已经解析出的查询信息重建规范化的问题段。
 static int copy_parsed_question(const DrParsedQuery *parsed, uint8_t *out, size_t *question_end) {
     size_t qname_len = 0U;
 
@@ -92,6 +100,7 @@ static int copy_parsed_question(const DrParsedQuery *parsed, uint8_t *out, size_
     return 1;
 }
 
+// 跳过 DNS 名称字段并返回原报文中实际占用的字节数。
 static int skip_name(const uint8_t *packet, size_t packet_len, size_t offset, size_t *consumed) {
     size_t pos = offset;
 
@@ -110,6 +119,7 @@ static int skip_name(const uint8_t *packet, size_t packet_len, size_t offset, si
             if (pointer >= packet_len) {
                 return 0;
             }
+            // 压缩指针本身只占 2 字节，跳过时不需要展开目标名称。
             *consumed = pos - offset + 2U;
             return 1;
         }
@@ -126,6 +136,7 @@ static int skip_name(const uint8_t *packet, size_t packet_len, size_t offset, si
     return 0;
 }
 
+// 读取 DNS 名称字段，支持压缩指针并输出小写点分域名。
 static int read_name(
     const uint8_t *packet,
     size_t packet_len,
@@ -155,6 +166,7 @@ static int read_name(
             if (!jumped) {
                 *consumed = pos - offset + 2U;
             }
+            // 限制跳转次数，避免畸形压缩指针造成循环解析。
             if (++jumps > 16U || pointer >= packet_len) {
                 return 0;
             }
@@ -202,6 +214,7 @@ static int read_name(
     return 0;
 }
 
+// 从原始查询中复制问题段，供错误响应尽量保留原问题。
 static int copy_question(const uint8_t *query, size_t query_len, uint8_t *out, size_t *question_end) {
     DrDnsHeader header;
     size_t qname_consumed = 0U;
@@ -224,6 +237,7 @@ static int copy_question(const uint8_t *query, size_t query_len, uint8_t *out, s
     return 1;
 }
 
+// 从 DNS 报文中解析固定 12 字节头部。
 int dr_dns_parse_header(const uint8_t *packet, size_t packet_len, DrDnsHeader *header) {
     if (packet == NULL || header == NULL || packet_len < DR_DNS_HEADER_SIZE) {
         return 0;
@@ -238,6 +252,7 @@ int dr_dns_parse_header(const uint8_t *packet, size_t packet_len, DrDnsHeader *h
     return 1;
 }
 
+// 将域名规范化为小写且无结尾点的形式。
 int dr_dns_normalize_name(const char *input, char *output, size_t output_size) {
     size_t len;
     size_t index;
@@ -281,28 +296,34 @@ int dr_dns_normalize_name(const char *input, char *output, size_t output_size) {
     return 1;
 }
 
+// 读取 DNS 报文头部的事务 ID。
 uint16_t dr_dns_read_id(const uint8_t *packet, size_t packet_len) {
     return packet != NULL && packet_len >= 2U ? read_u16(packet) : 0U;
 }
 
+// 写入 DNS 报文头部的事务 ID。
 void dr_dns_write_id(uint8_t *packet, size_t packet_len, uint16_t id) {
     if (packet != NULL && packet_len >= 2U) {
         write_u16(packet, id);
     }
 }
 
+// 判断 DNS 报文是否为响应报文。
 int dr_dns_is_response(const uint8_t *packet, size_t packet_len) {
     return packet != NULL && packet_len >= DR_DNS_HEADER_SIZE && (read_u16(packet + 2) & 0x8000U) != 0U;
 }
 
+// 读取 DNS 报文中的 opcode 操作码。
 uint8_t dr_dns_get_opcode(const uint8_t *packet, size_t packet_len) {
     return packet != NULL && packet_len >= DR_DNS_HEADER_SIZE ? (uint8_t)((read_u16(packet + 2) >> 11) & 0x0fU) : 0xffU;
 }
 
+// 读取 DNS 响应码 rcode。
 uint8_t dr_dns_get_rcode(const uint8_t *packet, size_t packet_len) {
     return packet != NULL && packet_len >= DR_DNS_HEADER_SIZE ? (uint8_t)(read_u16(packet + 2) & 0x0fU) : 0xffU;
 }
 
+// 解析 DNS 查询问题段，提取域名、类型、类别和头部标志。
 int dr_dns_parse_query(const uint8_t *packet, size_t packet_len, DrParsedQuery *parsed, char *errbuf, size_t errbuf_size) {
     DrDnsHeader header;
     size_t consumed = 0U;
@@ -359,6 +380,7 @@ int dr_dns_parse_query(const uint8_t *packet, size_t packet_len, DrParsedQuery *
     return 1;
 }
 
+// 根据本地域名表命中结果构造 A 记录响应。
 int dr_dns_build_a_response(
     const uint8_t *query,
     size_t query_len,
@@ -383,6 +405,7 @@ int dr_dns_build_a_response(
     if (!copy_parsed_question(parsed, out, &answer_offset) || answer_offset + 16U > DR_DNS_MAX_PACKET_SIZE) {
         return 0;
     }
+    // 设置 QR/RA 等响应标志，并保留客户端递归期望 RD。
     flags = (uint16_t)(0x8000U | (parsed->flags & 0x0100U) | 0x0080U);
     write_u16(out, parsed->id);
     write_u16(out + 2U, flags);
@@ -391,6 +414,7 @@ int dr_dns_build_a_response(
     write_u16(out + 8U, 0U);
     write_u16(out + 10U, 0U);
 
+    // 回答段名称使用指向问题段域名的压缩指针 0xc00c。
     write_u16(out + answer_offset, 0xc00cU);
     write_u16(out + answer_offset + 2U, 1U);
     write_u16(out + answer_offset + 4U, 1U);
@@ -401,6 +425,7 @@ int dr_dns_build_a_response(
     return 1;
 }
 
+// 根据原始查询构造指定错误码的 DNS 响应。
 int dr_dns_build_error_response(
     const uint8_t *query,
     size_t query_len,
@@ -423,6 +448,7 @@ int dr_dns_build_error_response(
     if (!dr_dns_parse_header(query, query_len, &header)) {
         return 0;
     }
+    // 能完整解析问题段时重建规范化问题，否则退回到原始问题段复制。
     if (header.qdcount == 1U && dr_dns_parse_query(query, query_len, &parsed, NULL, 0U)) {
         if (!copy_parsed_question(&parsed, out, &question_end)) {
             return 0;
@@ -447,6 +473,7 @@ int dr_dns_build_error_response(
     return 1;
 }
 
+// 收集响应中各资源记录 TTL 的偏移和最小 TTL。
 int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList *patches, uint32_t *min_ttl) {
     DrDnsHeader header;
     size_t offset = DR_DNS_HEADER_SIZE;
@@ -462,6 +489,7 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
     }
 
     memset(patches, 0, sizeof(*patches));
+    // 先跳过问题段，再逐个扫描回答、授权和附加资源记录。
     for (rr_index = 0; rr_index < header.qdcount; ++rr_index) {
         size_t consumed = 0U;
         if (!skip_name(packet, packet_len, offset, &consumed) || offset + consumed + 4U > packet_len) {
@@ -490,6 +518,7 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
         ttl = read_u32(packet + ttl_offset);
         rdlength = read_u16(packet + ttl_offset + 4U);
 
+        // EDNS OPT 记录不是普通缓存数据，不参与 TTL 缓存计算。
         if (rr_type != 41U) {
             if (patches->count < DR_DNS_MAX_TTL_PATCHES) {
                 patches->items[patches->count].ttl_offset = ttl_offset;
@@ -515,6 +544,7 @@ int dr_dns_collect_ttls(const uint8_t *packet, size_t packet_len, DrTtlPatchList
     return 1;
 }
 
+// 按缓存已保存时间修正响应报文中的 TTL 字段。
 void dr_dns_apply_ttl_patches(uint8_t *packet, size_t packet_len, const DrTtlPatchList *patches, uint32_t elapsed_sec) {
     size_t index;
     if (packet == NULL || patches == NULL) {
@@ -525,6 +555,7 @@ void dr_dns_apply_ttl_patches(uint8_t *packet, size_t packet_len, const DrTtlPat
         if (patches->items[index].ttl_offset + 4U > packet_len) {
             continue;
         }
+        // 返回缓存响应时扣减已经过去的秒数，避免 TTL 被刷新。
         if (elapsed_sec >= ttl) {
             ttl = 0U;
         } else {

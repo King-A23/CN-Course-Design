@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 option(DNSRELAY_BUILD_TESTS "Build unit tests" ON)
+option(DNSRELAY_BUILD_PERF_TESTS "Register optional performance tests" OFF)
 set(DNSRELAY_DEV_PORT "53" CACHE STRING "Development bind port")
 
 add_library(dnsrelay_core
@@ -82,5 +83,13 @@ if(DNSRELAY_BUILD_TESTS)
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_server_integration.py $<TARGET_FILE:dnsrelay> ${CMAKE_SOURCE_DIR}
         )
         set_tests_properties(test_server_integration PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+        if(DNSRELAY_BUILD_PERF_TESTS)
+            add_test(
+                NAME perf_dnsrelay
+                COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/perf_dnsrelay.py $<TARGET_FILE:dnsrelay> ${CMAKE_SOURCE_DIR} --requests 300 --relay-requests 120 --clients 4
+            )
+            set_tests_properties(perf_dnsrelay PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} LABELS perf)
+        endif()
     endif()
 endif()

@@ -1,0 +1,26 @@
+{
+  "ctest_exit_code": 0,
+  "bind_port": 59428,
+  "fake_upstream_port": 55407,
+  "fake_upstream_count": 2,
+  "fake_upstream_queries": [
+    {
+      "id": 1,
+      "qname": "relay-only.example"
+    },
+    {
+      "id": 2,
+      "qname": "mismatch.example"
+    }
+  ],
+  "assets": {
+    "ctest": "report_assets/screenshot_ctest.svg",
+    "local_a": "report_assets/screenshot_local_a.svg",
+    "blocked": "report_assets/screenshot_blocked.svg",
+    "relay_cache": "report_assets/screenshot_relay_cache.svg",
+    "server_log": "report_assets/screenshot_server_log.svg",
+    "architecture": "report_assets/flow_architecture.svg",
+    "client_flow": "report_assets/flow_client.svg",
+    "upstream_flow": "report_assets/flow_upstream.svg"
+  }
+}
